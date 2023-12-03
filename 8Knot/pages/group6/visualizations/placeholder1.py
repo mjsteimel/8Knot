@@ -222,7 +222,7 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
         df = cache.grabm(func=ctq, repos=repolist)
 
     start = time.perf_counter()
-    logging.warning(f"{VIZ_ID}- START")
+    logging.warning(f"{VIZ_ID}- STARTING RIGHT HERE HEY I DID SOMETIHNG")
 
     # test if there is data
     if df.empty:
@@ -285,13 +285,19 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
 
     new_sum = 0
 
-    finder = df.length-1
+
+    finder = df.last_valid_index
+
     while new_sum > half_t_sum :
         df = df.head(finder)
         new_sum = df[action_type].sum()
         finder = finder-1
 
-    print(new_sum)
+    logging.warning("HERE IS WAHT NEW SUM IS:::")
+    logging.warning(new_sum)
+
+    logging.warning("Here are the amount of rows needed ")
+    logging.warning(finder)
 
     # convert cntrb_id from type UUID to String
     df["cntrb_id"] = df["cntrb_id"].apply(lambda x: str(x).split("-")[0])
