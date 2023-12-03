@@ -105,7 +105,7 @@ gc_placeholder1 = dbc.Card(
                                             min=2,
                                             max=100,
                                             step=1,
-                                            value=10,
+                                            value=100,
                                             size="sm",
                                         ),
                                     ],
@@ -277,17 +277,28 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
     # get the number of total contributions
     t_sum = df[action_type].sum()
 
+    # half of all contributions
+    half_t_sum = t_sum/2
+
     # index df to get first k rows
-    df = df.head(top_k)
+    #df = df.head(top_k)
+
+    new_sum = 0
+
+    finder = df.length-1
+    while new_sum > half_t_sum :
+        df = df.head(finder)
+        new_sum = df[action_type].sum()
+        finder = finder-1
+
+    print(new_sum)
 
     # convert cntrb_id from type UUID to String
     df["cntrb_id"] = df["cntrb_id"].apply(lambda x: str(x).split("-")[0])
 
-    # get the number of total top k contributions
-    df_sum = df[action_type].sum()
 
     # calculate the remaining contributions by taking the the difference of t_sum and df_sum
-    df = df.append({"cntrb_id": "Other", action_type: t_sum - df_sum}, ignore_index=True)
+    df = df.append({"cntrb_id": "Other", action_type: t_sum - new_sum}, ignore_index=True)
 
     return df
 

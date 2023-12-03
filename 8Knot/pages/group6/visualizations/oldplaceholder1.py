@@ -277,16 +277,8 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
     # get the number of total contributions
     t_sum = df[action_type].sum()
 
-    # half of all contributions
-    half_t_sum = t_sum/2
-
     # index df to get first k rows
     df = df.head(top_k)
-
-    new_sum = 0
-
-    #while new_sum < half_t_sum :
-    #    df.head(df.last_valid_index)
 
     # convert cntrb_id from type UUID to String
     df["cntrb_id"] = df["cntrb_id"].apply(lambda x: str(x).split("-")[0])
