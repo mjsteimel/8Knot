@@ -18,7 +18,7 @@ import time
 import datetime as dt
 
 PAGE = "group6"
-VIZ_ID = "placeholder1"
+VIZ_ID = "busfactor"
 
 gc_placeholder1 = dbc.Card(
     [
@@ -34,15 +34,7 @@ gc_placeholder1 = dbc.Card(
                         dbc.PopoverHeader("Graph Info:"),
                         dbc.PopoverBody(
                             """
-                                        For a given action type, visualizes the proportional share of the top k anonymous
-                                        contributors, aggregating the remaining contributors as "Other". Suppose Contributor A
-                                        opens the most PRs of all contributors, accounting for 1/5 of all PRs. If k = 1,
-                                        then the chart will have one slice for Contributor A accounting for 1/5 of the area,
-                                        with the remaining 4/5 representing all other contributors. By default, contributors
-                                        who have 'potential-bot-filter' in their login are filtered out. Optionally, contributors
-                                        can be filtered out by their logins with custom keyword(s). Note: Some commits may have a
-                                        Contributor ID of 'None' if there is no Github account is associated with the email that
-                                        the contributor committed as.
+                                        Shows the amount of users creating 50% of commits
                                         """
                         ),
                     ],
@@ -91,26 +83,6 @@ gc_placeholder1 = dbc.Card(
                                     ],
                                     className="me-2",
                                     width=3,
-                                ),
-                                dbc.Label(
-                                    "Top K Contributors:",
-                                    html_for=f"top-k-contributors-{PAGE}-{VIZ_ID}",
-                                    width="auto",
-                                ),
-                                dbc.Col(
-                                    [
-                                        dbc.Input(
-                                            id=f"top-k-contributors-{PAGE}-{VIZ_ID}",
-                                            type="number",
-                                            min=2,
-                                            max=100,
-                                            step=1,
-                                            value=100,
-                                            size="sm",
-                                        ),
-                                    ],
-                                    className="me-2",
-                                    width=2,
                                 ),
                             ],
                             align="center",
@@ -191,7 +163,6 @@ def toggle_popover(n, is_open):
 # callback for dynamically changing the graph title
 @callback(
     Output(f"graph-title-{PAGE}-{VIZ_ID}", "children"),
-    Input(f"top-k-contributors-{PAGE}-{VIZ_ID}", "value"),
     Input(f"action-type-{PAGE}-{VIZ_ID}", "value"),
 )
 def graph_title(k, action_type):
@@ -206,14 +177,13 @@ def graph_title(k, action_type):
     [
         Input("repo-choices", "data"),
         Input(f"action-type-{PAGE}-{VIZ_ID}", "value"),
-        Input(f"top-k-contributors-{PAGE}-{VIZ_ID}", "value"),
         Input(f"patterns-{PAGE}-{VIZ_ID}", "value"),
         Input(f"date-picker-range-{PAGE}-{VIZ_ID}", "start_date"),
         Input(f"date-picker-range-{PAGE}-{VIZ_ID}", "end_date"),
     ],
     background=True,
 )
-def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date, end_date):
+def create_top_k_cntrbs_graph(repolist, action_type, patterns, start_date, end_date):
     # wait for data to asynchronously download and become available.
     cache = cm()
     df = cache.grabm(func=ctq, repos=repolist)
@@ -234,7 +204,7 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
         return dash.no_update, True
 
     # function for all data pre processing
-    df = process_data(df, action_type, top_k, patterns, start_date, end_date)
+    df = process_data(df, action_type, patterns, start_date, end_date)
 
     fig = create_figure(df, action_type)
 
@@ -242,7 +212,7 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
     return fig, False
 
 
-def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end_date):
+def process_data(df: pd.DataFrame, action_type, patterns, start_date, end_date):
     # convert to datetime objects rather than strings
     df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
 
@@ -267,8 +237,8 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
     # count the number of contributions for each contributor
     df = (df.groupby("cntrb_id")["Action"].count()).to_frame()
 
-    # sort rows according to amount of contributions from greatest to least
-    df.sort_values(by="cntrb_id", ascending=False, inplace=True)
+    # sort rows according to amount of contributions from least to greatest
+    df.sort_values(by="cntrb_id", ascending=True, inplace=True)
     df = df.reset_index()
 
     # rename Action column to action_type
@@ -286,18 +256,12 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
     new_sum = 0
 
 
-    finder = df.last_valid_index
+    finder = df.last_valid_index()
 
     while new_sum > half_t_sum :
         df = df.head(finder)
         new_sum = df[action_type].sum()
         finder = finder-1
-
-    logging.warning("HERE IS WAHT NEW SUM IS:::")
-    logging.warning(new_sum)
-
-    logging.warning("Here are the amount of rows needed ")
-    logging.warning(finder)
 
     # convert cntrb_id from type UUID to String
     df["cntrb_id"] = df["cntrb_id"].apply(lambda x: str(x).split("-")[0])
@@ -310,6 +274,8 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
 
 
 def create_figure(df: pd.DataFrame, action_type):
+
+    logging.warning("Creating plotly graph....")
     # create plotly express pie chart
     fig = px.pie(
         df,
@@ -320,13 +286,14 @@ def create_figure(df: pd.DataFrame, action_type):
 
     # display percent contributions and cntrb_id in each wedge
     # format hover template to display cntrb_id and the number of their contributions according to the action_type
-    fig.update_traces(
-        textinfo="percent+label",
-        textposition="inside",
-        hovertemplate="Contributor ID: %{label} <br>Contributions: %{value}<br><extra></extra>",
-    )
+    #fig.update_traces(
+    #    textinfo="percent+label",
+    #    textposition="inside",
+    #    hovertemplate="Contributor ID: %{label} <br>Contributions: %{value}<br><extra></extra>",
+    #)
 
     # add legend title
     fig.update_layout(legend_title_text="Contributor ID")
 
+    logging.warning("Done!")
     return fig
