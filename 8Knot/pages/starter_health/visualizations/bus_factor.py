@@ -18,9 +18,9 @@ import time
 import datetime as dt
 
 PAGE = "starter_health"
-VIZ_ID = "placeholder1"
+VIZ_ID = "bus_factor"
 
-gc_placeholder1 = dbc.Card(
+gc_bus_factor = dbc.Card(
     [
         dbc.CardBody(
             [
@@ -195,7 +195,7 @@ def toggle_popover(n, is_open):
     Input(f"action-type-{PAGE}-{VIZ_ID}", "value"),
 )
 def graph_title(k, action_type):
-    title = f"Placeholder 1"
+    title = f"Bus Factor"
     return title
 
 
@@ -222,7 +222,7 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
         df = cache.grabm(func=ctq, repos=repolist)
 
     start = time.perf_counter()
-    logging.warning(f"{VIZ_ID}- START")
+    logging.warning(f"{VIZ_ID}- START PLZ CHANGE")
 
     # test if there is data
     if df.empty:
@@ -243,6 +243,8 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
 
 
 def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end_date):
+
+    logging.warning("Processing data...")
     # convert to datetime objects rather than strings
     df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
 
@@ -277,17 +279,33 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
     # get the number of total contributions
     t_sum = df[action_type].sum()
 
-    # index df to get first k rows
-    df = df.head(top_k)
-
     # convert cntrb_id from type UUID to String
     df["cntrb_id"] = df["cntrb_id"].apply(lambda x: str(x).split("-")[0])
 
     # get the number of total top k contributions
     df_sum = df[action_type].sum()
 
+    # half of all contributions
+    half_t_sum = t_sum/2
+
+    # index df to get first k rows
+    #df = df.head(top_k)
+
+    new_sum = df[action_type].sum()
+
+    logging.warning(new_sum)
+    logging.warning(half_t_sum)
+
+    finder = df.last_valid_index()
+
+    while new_sum > half_t_sum :
+        df = df.head(finder)
+        new_sum = df[action_type].sum()
+        finder = finder-1
+        logging.warning("finder is now {finder}")
+
     # calculate the remaining contributions by taking the the difference of t_sum and df_sum
-    df = df.append({"cntrb_id": "Other", action_type: t_sum - df_sum}, ignore_index=True)
+    df = df.append({"cntrb_id": "Other", action_type: t_sum - new_sum}, ignore_index=True)
 
     return df
 
