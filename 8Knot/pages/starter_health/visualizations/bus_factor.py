@@ -92,26 +92,6 @@ gc_bus_factor = dbc.Card(
                                     className="me-2",
                                     width=3,
                                 ),
-                                dbc.Label(
-                                    "Top K Contributors:",
-                                    html_for=f"top-k-contributors-{PAGE}-{VIZ_ID}",
-                                    width="auto",
-                                ),
-                                dbc.Col(
-                                    [
-                                        dbc.Input(
-                                            id=f"top-k-contributors-{PAGE}-{VIZ_ID}",
-                                            type="number",
-                                            min=2,
-                                            max=100,
-                                            step=1,
-                                            value=10,
-                                            size="sm",
-                                        ),
-                                    ],
-                                    className="me-2",
-                                    width=2,
-                                ),
                             ],
                             align="center",
                         ),
@@ -191,10 +171,9 @@ def toggle_popover(n, is_open):
 # callback for dynamically changing the graph title
 @callback(
     Output(f"graph-title-{PAGE}-{VIZ_ID}", "children"),
-    Input(f"top-k-contributors-{PAGE}-{VIZ_ID}", "value"),
     Input(f"action-type-{PAGE}-{VIZ_ID}", "value"),
 )
-def graph_title(k, action_type):
+def graph_title(action_type):
     title = f"Bus Factor"
     return title
 
@@ -206,14 +185,13 @@ def graph_title(k, action_type):
     [
         Input("repo-choices", "data"),
         Input(f"action-type-{PAGE}-{VIZ_ID}", "value"),
-        Input(f"top-k-contributors-{PAGE}-{VIZ_ID}", "value"),
         Input(f"patterns-{PAGE}-{VIZ_ID}", "value"),
         Input(f"date-picker-range-{PAGE}-{VIZ_ID}", "start_date"),
         Input(f"date-picker-range-{PAGE}-{VIZ_ID}", "end_date"),
     ],
     background=True,
 )
-def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date, end_date):
+def create_top_k_cntrbs_graph(repolist, action_type, patterns, start_date, end_date):
     # wait for data to asynchronously download and become available.
     cache = cm()
     df = cache.grabm(func=ctq, repos=repolist)
@@ -234,7 +212,7 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
         return dash.no_update, True
 
     # function for all data pre processing
-    df = process_data(df, action_type, top_k, patterns, start_date, end_date)
+    df = process_data(df, action_type, patterns, start_date, end_date)
 
     fig = create_figure(df, action_type)
 
@@ -242,7 +220,7 @@ def create_top_k_cntrbs_graph(repolist, action_type, top_k, patterns, start_date
     return fig, False
 
 
-def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end_date):
+def process_data(df: pd.DataFrame, action_type, patterns, start_date, end_date):
 
     logging.warning("Processing data...")
     # convert to datetime objects rather than strings
@@ -302,7 +280,6 @@ def process_data(df: pd.DataFrame, action_type, top_k, patterns, start_date, end
         df = df.head(finder)
         new_sum = df[action_type].sum()
         finder = finder-1
-        logging.warning("finder is now {finder}")
 
     # calculate the remaining contributions by taking the the difference of t_sum and df_sum
     df = df.append({"cntrb_id": "Other", action_type: t_sum - new_sum}, ignore_index=True)
@@ -328,6 +305,6 @@ def create_figure(df: pd.DataFrame, action_type):
     )
 
     # add legend title
-    fig.update_layout(legend_title_text="Contributor ID")
+    fig.update_layout(showlegend=False)
 
     return fig
