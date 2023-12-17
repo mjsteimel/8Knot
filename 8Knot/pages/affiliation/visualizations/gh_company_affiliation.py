@@ -16,8 +16,11 @@ import time
 import datetime as dt
 from fuzzywuzzy import fuzz
 
+import numpy as np
+
 PAGE = "affiliation"
 VIZ_ID = "gh-company-affiliation"
+COMPANY_NAME = "Google"
 
 gc_gh_company_affiliation = dbc.Card(
     [
@@ -63,12 +66,24 @@ gc_gh_company_affiliation = dbc.Card(
                                         min=1,
                                         max=50,
                                         step=1,
-                                        value=5,
+                                        value=20,
                                         size="sm",
                                     ),
                                     className="me-2",
                                     width=2,
                                 ),
+                                dbc.Label(
+                                    "Company Name:",
+                                    html_for=f"company-name-{PAGE}-{VIZ_ID}",
+                                    width={"size":"auto"}
+                                ),
+                                dbc.Col(
+                                    dbc.Input(
+                                        id=f"company-name-{PAGE}-{VIZ_ID}",
+                                        type="text",
+                                        placeholder="Try a company name, like Google"
+                                    )
+                                )
                             ],
                             align="center",
                         ),
@@ -124,12 +139,13 @@ def toggle_popover(n, is_open):
     [
         Input("repo-choices", "data"),
         Input(f"contributions-required-{PAGE}-{VIZ_ID}", "value"),
+        Input(f"company-name-{PAGE}-{VIZ_ID}", "value"),
         Input(f"date-picker-range-{PAGE}-{VIZ_ID}", "start_date"),
         Input(f"date-picker-range-{PAGE}-{VIZ_ID}", "end_date"),
     ],
     background=True,
 )
-def gh_company_affiliation_graph(repolist, num, start_date, end_date):
+def gh_company_affiliation_graph(repolist, num, company_name, start_date, end_date):
     # wait for data to asynchronously download and become available.
     cache = cm()
     df = cache.grabm(func=cmq, repos=repolist)
@@ -146,7 +162,7 @@ def gh_company_affiliation_graph(repolist, num, start_date, end_date):
         return nodata_graph
 
     # function for all data pre processing, COULD HAVE ADDITIONAL INPUTS AND OUTPUTS
-    df = process_data(df, num, start_date, end_date)
+    df = process_data(df, num, company_name, start_date, end_date)
 
     fig = create_figure(df)
 
@@ -154,11 +170,13 @@ def gh_company_affiliation_graph(repolist, num, start_date, end_date):
     return fig
 
 
-def process_data(df: pd.DataFrame, num, start_date, end_date):
+def process_data(df: pd.DataFrame, num, company_name, start_date, end_date):
     """Implement your custom data-processing logic in this function.
     The output of this function is the data you intend to create a visualization with,
     requiring no further processing."""
 
+
+    logging.warning(company_name)
     # convert to datetime objects rather than strings
     df["created"] = pd.to_datetime(df["created"], utc=True)
 
@@ -182,26 +200,9 @@ def process_data(df: pd.DataFrame, num, start_date, end_date):
     df = df.rename(columns={"index": "orginal_name", "cntrb_company": "contribution_count"})
 
     # applies fuzzy matching comparing all rows to each other
-    df["match"] = df.apply(lambda row: fuzzy_match(df, row["company_name"]), axis=1)
+    #df["match"] = df.apply(lambda row: fuzzy_match(df, row["company_name"]), axis=1)
 
-    # changes company name to match other fuzzy matches
-    for x in range(0, len(df)):
-        # gets match values for the current row
-        matches = df.iloc[x]["match"]
-        for y in matches:
-            # for each match, change the name to its match and clear out match column as
-            # it will unnecessarily reapply changes
-            df.loc[y, "company_name"] = df.iloc[x]["company_name"]
-            df.loc[y, "match"] = ""
-
-    # groups all same name company affiliation and sums the contributions
-    df = (
-        df.groupby(by="company_name")["contribution_count"]
-        .sum()
-        .reset_index()
-        .sort_values(by=["contribution_count"])
-        .reset_index(drop=True)
-    )
+    df["company_name"] = np.where(df["company_name"] == company_name, company_name, "Other" )
 
     # changes the name of the company if under a certain threshold
     df.loc[df.contribution_count <= num, "company_name"] = "Other"
