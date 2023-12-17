@@ -23,7 +23,7 @@ gc_contribs_by_action = dbc.Card(
         dbc.CardBody(
             [
                 html.H3(
-                    "Contributors by Action Type",
+                    "Contributor Counts by Month",
                     className="card-title",
                     style={"textAlign": "center"},
                 ),
@@ -31,10 +31,8 @@ gc_contribs_by_action = dbc.Card(
                     [
                         dbc.PopoverHeader("Graph Info:"),
                         dbc.PopoverBody(
-                            """Visualizes the number of contributors who have performed a specific action\n
-                            (have opened a PR, for example) within a specified time-window. This is different\n
-                            from counting the number of contributions (the number of PRs having been opened)-\n
-                            the focus is on the activity of distinct contributors. """
+                            """Visualizes the contributor count (active commit authors,\n
+                             review participants, issue authors, and issue comment participants) """
                         ),
                     ],
                     id=f"popover-{PAGE}-{VIZ_ID}",
@@ -63,11 +61,10 @@ gc_contribs_by_action = dbc.Card(
                                                     "label": "PR Open",
                                                     "value": "PR Opened",
                                                 },
-                                                {"label": "Comment", "value": "Comment"},
-                                                {"label": "PR Review", "value": "PR Review"},
-                                                {"label": "Issue Opened", "value": "Issue Opened"},
-                                                {"label": "Issue Closed", "value": "Issue Closed"},
-                                                {"label": "Commit", "value": "Commit"},
+                                                {"label": "Issue Comment Participants", "value": "Comment"},
+                                                {"label": "Review Participants", "value": "PR Review"},
+                                                {"label": "Issue Authors", "value": "Issue Opened"},
+                                                {"label": "Active Commit Authors", "value": "Commit"},
                                             ],
                                             value="PR Opened",
                                             clearable=False,
@@ -100,9 +97,6 @@ gc_contribs_by_action = dbc.Card(
                                         id=f"date-interval-{PAGE}-{VIZ_ID}",
                                         options=[
                                             {"label": "Month", "value": "M1"},
-                                            {"label": "Quarter", "value": "M3"},
-                                            {"label": "6 Months", "value": "M6"},
-                                            {"label": "Year", "value": "M12"},
                                         ],
                                         value="M1",
                                         inline=True,
@@ -199,12 +193,13 @@ def process_data(df: pd.DataFrame, interval, action):
 
 def create_figure(df: pd.DataFrame, interval, action):
     # time values for graph
+
     x_r, x_name, hover, period = get_graph_time_values(interval)
 
     # create plotly express histogram
     fig = px.histogram(df, x="created_at", color_discrete_sequence=[color_seq[3]])
 
-    # creates bins with interval size and customizes the hover value for the bars
+   # creates bins with interval size and customizes the hover value for the bars
     fig.update_traces(
         xbins_size=interval,
         hovertemplate=hover + "<br>" + action + " Contributors: %{y}<br><extra></extra>",
@@ -213,13 +208,13 @@ def create_figure(df: pd.DataFrame, interval, action):
     )
 
     # update xaxes to align for the interval bin size
-    fig.update_xaxes(
+    """fig.update_xaxes(
         showgrid=True,
         ticklabelmode="period",
         dtick=period,
         rangeslider_yaxis_rangemode="match",
         range=x_r,
-    )
+    ) """
 
     # layout styling
     fig.update_layout(
