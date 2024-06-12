@@ -6,7 +6,7 @@ import warnings
 # import visualization cards
 from .visualizations.bus_factor import gc_bus_factor
 from .visualizations.time_first_response import gc_time_first_response
-from .visualizations.placeholder3 import gc_placeholder3
+from .visualizations.change_req_close import gc_change_req_close_ratio
 from .visualizations.release_frequency import gc_release_frequency
 
 warnings.filterwarnings("ignore")
@@ -26,7 +26,7 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(gc_release_frequency, width=6),
-                dbc.Col(gc_placeholder3, width=6),
+                dbc.Col(gc_change_req_close_ratio, width=6),
             ],
             align="center",
             style={"marginBottom": ".5%"},
